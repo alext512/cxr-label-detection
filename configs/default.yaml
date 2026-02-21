@@ -1,0 +1,81 @@
+# Example config. CLI args override these.
+
+data:
+  root: /path/to/data
+  csv_name: train1.csv
+  img_subdir: resized_512/train1
+
+experiment:
+  run_name: densenet512_attn_posw_cv_v1
+  seed: 42
+
+model:
+  backbone:
+    name: densenet121        # one of: densenet121, resnet50, efficientnet_b0
+    pretrained: true         # TRUE = torchvision ImageNet (auto-download)
+    kwargs: {}
+
+    # --------------------------------------------------
+    # NEW: Optional custom pretrained checkpoint
+    # Leave checkpoint_path: null to use ImageNet
+    # --------------------------------------------------
+    checkpoint_path: null        # e.g. /workspace/weights/chexpert_densenet121.pth
+    checkpoint_key: null         # e.g. "state_dict" or "model"
+    prefix_strip: null           # e.g. "module." or "model."
+    load_strict: false
+    adapt_input_conv: auto       # auto adapts 1ch <-> 3ch first conv
+
+  head:
+    name: view_aware_gated_attn   # one of: view_aware_gated_attn, gated_attn, mean_pool
+    kwargs:
+      hidden_dim: 512
+      attn_dim: 256
+      dropout: 0.30
+      attn_dropout: 0.10
+
+cv:
+  n_splits: 5
+  select_fold: null
+
+train:
+  total_epochs: 10
+  frozen_epochs: 2
+  head_lr: 0.0006 # 0.0003
+  backbone_lr: 0.00002 # 0.00001
+  weight_decay: 0.0001
+  accum_steps: 4
+  study_batch_size: 48
+  num_workers: 8
+
+
+# ---------------------------
+# YAML-driven augmentations
+# ---------------------------
+augmentations:
+
+  train:
+    - name: resize
+      size: 512
+
+    - name: rotation
+      degrees: 7
+
+    - name: color_jitter
+      brightness: 0.08
+      contrast: 0.08
+
+    - name: to_tensor
+
+    - name: normalize
+      mean: [0.485, 0.456, 0.406]
+      std:  [0.229, 0.224, 0.225]
+
+  val:
+    - name: resize
+      size: 512
+
+    - name: to_tensor
+
+    - name: normalize
+      mean: [0.485, 0.456, 0.406]
+      std:  [0.229, 0.224, 0.225]

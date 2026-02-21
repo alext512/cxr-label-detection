@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cxr-mil"
+version = "0.1.0"
+description = "DenseNet121 512x512 view-aware MIL training"
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [{name="Converted from notebook"}]
+dependencies = [
+  "numpy",
+  "pandas",
+  "Pillow",
+  "tqdm",
+  "scikit-learn",
+  "iterative-stratification",
+  "torch",
+  "torchvision",
+  "pyyaml",
+]
+
+[project.scripts]
+cxr-mil-train-cv = "cxr_mil.cli.train_cv:main"
+
+[tool.setuptools]
+packages = ["cxr_mil", "cxr_mil.cli"]

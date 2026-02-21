@@ -1,0 +1,67 @@
+data:
+  csv_name: train1.csv
+  img_subdir: train1
+experiment:
+  run_name: exp01_imagenet_densenet121_512__fold1
+  seed: 42
+cv:
+  n_splits: 5
+  select_fold: 1
+model:
+  backbone:
+    name: densenet121
+    pretrained: true
+    kwargs: {}
+    checkpoint_path: null
+    checkpoint_key: null
+    prefix_strip: null
+    load_strict: false
+    adapt_input_conv: auto
+  head:
+    name: view_aware_gated_attn
+    kwargs:
+      hidden_dim: 512
+      attn_dim: 256
+      dropout: 0.3
+      attn_dropout: 0.1
+train:
+  total_epochs: 10
+  frozen_epochs: 2
+  head_lr: 0.0006
+  backbone_lr: 2.0e-05
+  weight_decay: 0.0001
+  accum_steps: 4
+  study_batch_size: 48
+  num_workers: 8
+augmentations:
+  train:
+  - name: resize
+    size: 512
+  - name: rotation
+    degrees: 7
+  - name: color_jitter
+    brightness: 0.08
+    contrast: 0.08
+  - name: to_tensor
+  - name: normalize
+    mean:
+    - 0.485
+    - 0.456
+    - 0.406
+    std:
+    - 0.229
+    - 0.224
+    - 0.225
+  val:
+  - name: resize
+    size: 512
+  - name: to_tensor
+  - name: normalize
+    mean:
+    - 0.485
+    - 0.456
+    - 0.406
+    std:
+    - 0.229
+    - 0.224
+    - 0.225

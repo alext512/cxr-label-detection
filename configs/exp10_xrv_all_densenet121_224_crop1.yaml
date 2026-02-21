@@ -1,0 +1,57 @@
+data:
+  csv_name: train1.csv
+  img_subdir: train1
+experiment:
+  run_name: exp10_xrv_all_densenet121_224_crop1__fold1
+  seed: 42
+cv:
+  n_splits: 5
+  select_fold: 1
+model:
+  backbone:
+    name: densenet121
+    pretrained: false
+    kwargs: {}
+    checkpoint_path: /workspace/weights/densenet121-res224-all__state_dict.pth
+    checkpoint_key: null
+    prefix_strip: null
+    load_strict: false
+    adapt_input_conv: auto
+  head:
+    name: view_aware_gated_attn
+    kwargs:
+      hidden_dim: 512
+      attn_dim: 256
+      dropout: 0.3
+      attn_dropout: 0.1
+train:
+  total_epochs: 10
+  frozen_epochs: 2
+  head_lr: 0.0006
+  backbone_lr: 2.0e-05
+  weight_decay: 0.0001
+  accum_steps: 4
+  study_batch_size: 48
+  num_workers: 8
+augmentations:
+  train:
+  - name: center_crop_frac
+    frac: 1.0
+  - name: resize
+    size: 224
+  - name: rotation
+    degrees: 7
+  - name: color_jitter
+    brightness: 0.08
+    contrast: 0.08
+  - name: to_tensor
+  - name: xrv_normalize
+    scale: 1024.0
+  val:
+  - name: center_crop_frac
+    frac: 1.0
+  - name: resize
+    size: 224
+  - name: to_tensor
+  - name: xrv_normalize
+    scale: 1024.0

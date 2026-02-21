@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Packaging
+*.egg-info/
+build/
+dist/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Training artifacts
+*.pt
+*.pth
+*.ckpt
+*_training_log_cv.csv
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
