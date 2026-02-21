@@ -39,4 +39,5 @@ python -m cxr_mil.train_cv --root /path/to/data
 
 ## Notebook
 Use `run_project_in_jupyter.ipynb` for interactive runs. The notebook is already
-clean (outputs removed) and suitable for GitHub.
+clean (outputs removed) and suitable for GitHub. It intentionally starts from a
+project ZIP so the same workflow can be used in remote notebook environments.
