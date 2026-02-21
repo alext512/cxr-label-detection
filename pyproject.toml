@@ -23,6 +23,8 @@ dependencies = [
 
 [project.scripts]
 cxr-mil-train-cv = "cxr_mil.cli.train_cv:main"
+cxr-mil-analyze-preds = "cxr_mil.cli.analyze_predictions:main"
+cxr-mil-inspect-augs = "cxr_mil.cli.inspect_augmentations:main"
 
 [tool.setuptools]
 packages = ["cxr_mil", "cxr_mil.cli"]

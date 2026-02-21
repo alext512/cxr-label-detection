@@ -8,25 +8,11 @@ from tqdm.auto import tqdm
 
 
 def _freeze_batchnorm_stats(m: nn.Module) -> None:
-    """
-    Keep BatchNorm layers in eval mode while training.
-
-    Why:
-    - In MIL, each loader step can contain a very different number of images (N varies).
-    - BatchNorm running mean/var updates become noisy/unstable with such variable batches.
-    """
     if isinstance(m, (nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d)):
         m.eval()
 
 
 def _unwrap_logits(head_out):
-    """
-    study_head(...) may return either:
-      - logits (Tensor), or
-      - (logits, extra) tuple
-
-    We always want just logits for loss/probabilities.
-    """
     return head_out[0] if isinstance(head_out, tuple) else head_out
 
 
@@ -40,50 +26,33 @@ def train_one_epoch(
     scaler,
     accum_steps: int = 4,
     max_grad_norm: float | None = None,
+    on_optimizer_step=None,
 ) -> float:
-    """
-    One epoch of MIL training.
-
-    Expects the DataLoader to yield:
-      all_imgs      [N, 3, H, W]
-      study_targets [B, C]
-      group_idx     [N]
-      view_idx      [N]
-      study_ids     (unused here)
-    """
     backbone.train()
     study_head.train()
-
-    # Stabilize BatchNorm behavior under variable-N batches.
     backbone.apply(_freeze_batchnorm_stats)
 
     total_loss = 0.0
     total_studies = 0
 
     optimizer.zero_grad(set_to_none=True)
-
     pbar = tqdm(loader, desc="train", leave=False)
 
     last_step = 0
     for step, (all_imgs, study_targets, group_idx, view_idx, _) in enumerate(pbar, 1):
         last_step = step
-
         all_imgs = all_imgs.to(device, non_blocking=True)
         study_targets = study_targets.to(device, non_blocking=True)
         group_idx = group_idx.to(device, non_blocking=True)
         view_idx = view_idx.to(device, non_blocking=True)
-
         B = int(study_targets.size(0))
 
         with autocast(device_type=device.type, enabled=(device.type == "cuda")):
-            inst_embs = backbone(all_imgs)  # [N, D]
-            head_out = study_head(inst_embs, group_idx, view_idx, B)
-            logits = _unwrap_logits(head_out)  # [B, C]
+            inst_embs = backbone(all_imgs)
+            logits = _unwrap_logits(study_head(inst_embs, group_idx, view_idx, B))
             loss = criterion(logits, study_targets)
 
-        # Gradient accumulation
         scaler.scale(loss / accum_steps).backward()
-
         total_loss += float(loss.item()) * B
         total_studies += B
         pbar.set_postfix(loss=f"{(total_loss / max(1, total_studies)):.4f}")
@@ -95,12 +64,12 @@ def train_one_epoch(
                     list(backbone.parameters()) + list(study_head.parameters()),
                     max_grad_norm,
                 )
-
             scaler.step(optimizer)
             scaler.update()
             optimizer.zero_grad(set_to_none=True)
+            if on_optimizer_step is not None:
+                on_optimizer_step()
 
-    # Apply remainder step if epoch ended mid-accumulation.
     if last_step % accum_steps != 0:
         if max_grad_norm is not None:
             scaler.unscale_(optimizer)
@@ -108,26 +77,19 @@ def train_one_epoch(
                 list(backbone.parameters()) + list(study_head.parameters()),
                 max_grad_norm,
             )
-
         scaler.step(optimizer)
         scaler.update()
         optimizer.zero_grad(set_to_none=True)
+        if on_optimizer_step is not None:
+            on_optimizer_step()
 
     return total_loss / max(1, total_studies)
 
 
 @torch.no_grad()
-def eval_one_epoch(
-    backbone: nn.Module,
-    study_head: nn.Module,
-    loader,
-    criterion,
-    device: torch.device,
-) -> float:
-    """Validation for one epoch (same loader contract as train_one_epoch)."""
+def eval_one_epoch(backbone: nn.Module, study_head: nn.Module, loader, criterion, device: torch.device) -> float:
     backbone.eval()
     study_head.eval()
-
     running = 0.0
     pbar = tqdm(loader, desc="val", leave=False)
 
@@ -140,8 +102,7 @@ def eval_one_epoch(
 
         with autocast(device_type=device.type, enabled=(device.type == "cuda")):
             inst_embs = backbone(all_imgs)
-            head_out = study_head(inst_embs, group_idx, view_idx, B)
-            logits = _unwrap_logits(head_out)
+            logits = _unwrap_logits(study_head(inst_embs, group_idx, view_idx, B))
             loss = criterion(logits, study_targets)
 
         running += float(loss.item())
@@ -151,22 +112,9 @@ def eval_one_epoch(
 
 
 @torch.no_grad()
-def predict_proba_study_loader(
-    backbone: nn.Module,
-    study_head: nn.Module,
-    loader,
-    device: torch.device,
-):
-    """
-    Predict sigmoid probabilities per study.
-
-    Returns:
-      study_ids: list[str] length M
-      probs:     np.ndarray [M, C] (float32)
-    """
+def predict_proba_study_loader(backbone: nn.Module, study_head: nn.Module, loader, device: torch.device):
     backbone.eval()
     study_head.eval()
-
     all_ids: list[str] = []
     all_probs: list[np.ndarray] = []
 
@@ -178,8 +126,7 @@ def predict_proba_study_loader(
 
         with autocast(device_type=device.type, enabled=(device.type == "cuda")):
             inst_embs = backbone(all_imgs)
-            head_out = study_head(inst_embs, group_idx, view_idx, B)
-            logits = _unwrap_logits(head_out)
+            logits = _unwrap_logits(study_head(inst_embs, group_idx, view_idx, B))
             probs = torch.sigmoid(logits).detach().cpu().numpy().astype(np.float32)
 
         all_ids.extend(study_ids)
