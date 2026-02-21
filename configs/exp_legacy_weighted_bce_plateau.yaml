@@ -1,34 +1,24 @@
+# Equivalent-style legacy recipe with cleaner run hygiene.
+experiment:
+  run_name: exp_legacy_weighted_bce_plateau
+  seed: 42
+  output_root: runs
+
 data:
   root: /path/to/data
   csv_name: train1.csv
   img_subdir: train1
-
-experiment:
-  run_name: baseline_densenet121_512
-  seed: 42
-  output_root: runs
 
 model:
   backbone:
     name: densenet121
     pretrained: true
     kwargs: {}
-    checkpoint_path: null
-    checkpoint_key: null
-    prefix_strip: null
-    load_strict: false
-    adapt_input_conv: auto
   head:
     name: view_aware_gated_attn
-    kwargs:
-      hidden_dim: 512
-      attn_dim: 256
-      dropout: 0.30
-      attn_dropout: 0.10
+    kwargs: {hidden_dim: 512, attn_dim: 256, dropout: 0.30, attn_dropout: 0.10}
 
-cv:
-  n_splits: 5
-  select_fold: null
+cv: {n_splits: 5, select_fold: null}
 
 train:
   total_epochs: 20
@@ -41,18 +31,9 @@ train:
   max_grad_norm: null
   num_workers: 8
 
-loss:
-  name: weighted_bce
-  pos_weight_clip: 50.0
-
-scheduler:
-  name: reduce_on_plateau
-  factor: 0.5
-  patience: 2
-
-ema:
-  enabled: false
-  decay: 0.999
+loss: {name: weighted_bce, pos_weight_clip: 50.0}
+scheduler: {name: reduce_on_plateau, factor: 0.5, patience: 2}
+ema: {enabled: false, decay: 0.999}
 
 augmentations:
   train:
@@ -66,6 +47,3 @@ augmentations:
     - {name: resize, size: 512}
     - {name: to_tensor}
     - {name: normalize, mean: [0.485, 0.456, 0.406], std: [0.229, 0.224, 0.225]}
-
-analysis:
-  top_k: 30

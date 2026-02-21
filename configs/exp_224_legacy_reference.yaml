@@ -1,0 +1,33 @@
+# Reference run to mirror previously seen 224px behavior.
+experiment: {run_name: exp_224_legacy_reference, seed: 42, output_root: runs}
+data: {root: /path/to/data, csv_name: train1.csv, img_subdir: train1}
+model:
+  backbone: {name: densenet121, pretrained: true, kwargs: {}}
+  head: {name: view_aware_gated_attn, kwargs: {hidden_dim: 512, attn_dim: 256, dropout: 0.30, attn_dropout: 0.10}}
+cv: {n_splits: 5, select_fold: null}
+train:
+  total_epochs: 20
+  frozen_epochs: 2
+  head_lr: 0.0003
+  backbone_lr: 0.00001
+  weight_decay: 0.0001
+  accum_steps: 4
+  study_batch_size: 48
+  max_grad_norm: null
+  num_workers: 8
+loss: {name: weighted_bce, pos_weight_clip: 50.0}
+scheduler: {name: reduce_on_plateau, factor: 0.5, patience: 2}
+ema: {enabled: false, decay: 0.999}
+augmentations:
+  train:
+    - {name: center_crop_frac, frac: 1.0}
+    - {name: resize, size: 224}
+    - {name: hflip, p: 0.5}
+    - {name: rotation, degrees: 7}
+    - {name: to_tensor}
+    - {name: normalize, mean: [0.485, 0.456, 0.406], std: [0.229, 0.224, 0.225]}
+  val:
+    - {name: center_crop_frac, frac: 1.0}
+    - {name: resize, size: 224}
+    - {name: to_tensor}
+    - {name: normalize, mean: [0.485, 0.456, 0.406], std: [0.229, 0.224, 0.225]}
